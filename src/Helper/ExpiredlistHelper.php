@@ -63,7 +63,14 @@ class ExpiredlistHelper implements DatabaseAwareInterface
             ->join('INNER', $db->quoteName('#__users', 'u'), $db->quoteName('s.user_id') . ' = ' . $db->quoteName('u.id'))
             ->join('LEFT', $db->quoteName('#__comprofiler', 'cb'), $db->quoteName('s.user_id') . ' = ' . $db->quoteName('cb.id'))
             ->where($db->quoteName('s.plan_id') . ' = :planId')
-            ->whereIn($db->quoteName('s.status'), ['X', 'C'], ParameterType::STRING)
+            ->where(
+                '('
+                . $db->quoteName('s.status') . ' IN ("X")'
+                . ' OR ('
+                . $db->quoteName('s.status') . ' = ' . $db->quote('A')
+                . ' AND ' . $db->quoteName('s.expiry_date') . ' < NOW()'
+                . '))'
+            )
             ->bind(':planId', $planId, ParameterType::INTEGER)
             ->order($db->quoteName('s.expiry_date') . ' DESC')
             ->order($db->quoteName('u.name') . ' ASC');
