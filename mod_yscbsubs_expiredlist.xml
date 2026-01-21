@@ -55,4 +55,8 @@
 			</fieldset>
 		</fields>
 	</config>
+	<updateservers>
+		<server type="extension" name="Members With Expired Subscription Updates">
+			https://raw.githubusercontent.com/alexyarmoshko/joomla_mod_yscbsubs_expiredlist/refs/heads/main/mod_yscbsubs_expiredlist.update.xml</server>
+	</updateservers>
 </extension>
