@@ -1,3 +1,4 @@
+.agent/
 .vscode/
 *.zip
 .DS_Store
