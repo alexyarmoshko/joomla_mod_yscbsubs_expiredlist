@@ -4,15 +4,15 @@
         <description>Displays a list of members with expired subscriptions, filtered by plan.</description>
         <element>mod_yscbsubs_expiredlist</element>
         <type>module</type>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
         <client>site</client>
         <downloads>
-            <downloadurl type="full" format="zip">https://github.com/alexyarmoshko/joomla_mod_yscbsubs_expiredlist/releases/download/1.0.0/mod_yscbsubs_expiredlist-v1-0-0.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/alexyarmoshko/joomla_mod_yscbsubs_expiredlist/releases/download/1.1.0/mod_yscbsubs_expiredlist-v1-1-0.zip</downloadurl>
         </downloads>
         <tags>
             <tag>stable</tag>
         </tags>
-        <sha256>aad73ce6433b4263c090b63e98cdf965516f3da7331d76ec3b5e0fa7dbe3238d</sha256>
-        <targetplatform name="joomla" version="((4\.4)|(5\.(0|1|2|3|4|5|6|7|8|9)))" />
+        <sha256>5388ba24830a700d4a604c521e1de15f877156fea152c6255d14bd42b100c4ff</sha256>
+        <targetplatform name="joomla" version="(4\.[4-9]|5\.)" />
     </update>
 </updates>

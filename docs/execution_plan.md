@@ -19,6 +19,9 @@ This Joomla 4.4+/5.x module displays a list of Community Builder users whose CB 
 - [x] (2026-01-20) Milestone 7: Integration testing and validation.
 - [x] (2026-01-29) Updated plan and README to reflect the current repository layout and implementation details.
 - [x] (2026-02-09) Documentation review: fixed inconsistencies, extracted changelog to `docs/execution_changelog.md`, updated README.
+- [x] (2026-02-09) Code fixes: query correctness (`$db->quote('X')`), user deduplication, update XML regex, table captions.
+- [x] (2026-02-09) Added CSV export button (client-side Blob API) and year group counts in table captions.
+- [x] (2026-02-09) Added client-side pagination with configurable results per page.
 
 ## Surprises & Discoveries
 
@@ -26,6 +29,10 @@ This Joomla 4.4+/5.x module displays a list of Community Builder users whose CB 
   Evidence: `src/Helper/ExpiredlistHelper.php` status clause.
 - Observation: The plan selector shows plan `name` with rounded `rate`, not the plan alias.
   Evidence: `mod_yscbsubs_expiredlist.xml` SQL field query.
+- Observation: The original status filter used raw double-quoted `IN ("X")` which is unsafe under `ANSI_QUOTES` SQL mode.
+  Evidence: `src/Helper/ExpiredlistHelper.php` original status clause; fixed to use `$db->quote('X')`.
+- Observation: A user with multiple expired subscriptions for the same plan appeared multiple times in the output.
+  Evidence: no deduplication existed in the helper's grouping loop; fixed by tracking seen user IDs.
 
 ## Decision Log
 
@@ -61,6 +68,34 @@ This Joomla 4.4+/5.x module displays a list of Community Builder users whose CB 
   Rationale: Keeps the execution plan focused on architecture and implementation while preserving the history of changes in a dedicated file.
   Date/Author: 2026-02-09
 
+- Decision: Replace `IN ("X")` with `= $db->quote('X')` for the status filter.
+  Rationale: Double-quoted string literals are treated as identifiers when MariaDB/MySQL runs with `ANSI_QUOTES` SQL mode. Using `$db->quote()` is consistent with the `A` comparison and safe in all modes.
+  Date/Author: 2026-02-09
+
+- Decision: Deduplicate users in the helper's grouping loop by tracking seen user IDs; the first (latest) expiry wins.
+  Rationale: The query orders by `expiry_date DESC`, so the first row per user is the most recent expiry. Users with multiple expired subscriptions for the same plan should appear only once.
+  Date/Author: 2026-02-09
+
+- Decision: Broaden the `targetplatform` regex from `((4\.4)|(5\.(0|1|2|3|4|5|6|7|8|9)))` to `(4\.[4-9]|5\.)`.
+  Rationale: The original regex only matched Joomla 4.4 and 5.0-5.9. The new pattern also covers Joomla 4.5-4.9 and any 5.x minor version (e.g. 5.10+).
+  Date/Author: 2026-02-09
+
+- Decision: Replace the `<h4>` year heading with a `<caption>` inside each `<table>`.
+  Rationale: Screen readers rely on `<caption>` to describe a table's purpose. An `<h4>` outside the `<table>` is not programmatically associated with the table.
+  Date/Author: 2026-02-09
+
+- Decision: Add a client-side CSV export using the Blob API rather than a server-side endpoint.
+  Rationale: Joomla modules do not have their own URL routing, so adding a server-side CSV endpoint would require a component or AJAX controller. A client-side approach is self-contained: the template embeds the raw data as a JSON `<script>` block and a small inline JS builds the CSV and triggers a download via `URL.createObjectURL`. Element IDs use `$module->id` to support multiple module instances on the same page.
+  Date/Author: 2026-02-09
+
+- Decision: Show the user count per year in each table `<caption>` as "YYYY (N)".
+  Rationale: Gives administrators a quick summary without counting rows manually.
+  Date/Author: 2026-02-09
+
+- Decision: Use client-side JS pagination rather than server-side LIMIT/OFFSET.
+  Rationale: All data is already loaded for CSV export. Client-side pagination avoids extra DB queries and keeps the module stateless. The `results_per_page` config field (default 50, 0 = show all) controls page size. JS collects all rows across year-grouped tables into a flat list and shows/hides them per page, hiding empty year tables. Bootstrap 5 pagination controls render below the tables with ellipsis for large page counts.
+  Date/Author: 2026-02-09
+
 ## Outcomes & Retrospective
 
 ### Completed: 2026-01-20
@@ -74,6 +109,18 @@ The plan and README now reflect the repository root structure, the actual SQL fi
 ### Documentation review: 2026-02-09
 
 Corrected Joomla compatibility range to 4.4+/5.x (matching the update XML `targetplatform`). Fixed the Milestone 1 file tree. Added the `advanced` fieldset fields to the plan. Added missing DI container imports to the Interfaces section. Extracted the changelog to `docs/execution_changelog.md`. Updated `README.md` with file structure, all configuration options, and auto-update information.
+
+### Code fixes: 2026-02-09
+
+Fixed four issues: (1) replaced raw double-quoted `IN ("X")` with `$db->quote('X')` for ANSI_QUOTES safety, (2) added user deduplication in the helper's grouping loop so each user appears only once with their latest expiry, (3) broadened the update XML `targetplatform` regex to `(4\.[4-9]|5\.)` to cover Joomla 4.5-4.9 and all 5.x, (4) replaced `<h4>` year headings with `<caption>` elements inside each table for screen reader accessibility.
+
+### Usability features: 2026-02-09
+
+Added a "Download CSV" button to the template using client-side Blob API (no server-side endpoint needed). The template embeds the list data as a JSON `<script type="application/json">` block; inline JS builds the CSV and triggers a browser download. Element IDs use `$module->id` for multi-instance safety. Also added user count per year in each table `<caption>` as "YYYY (N)". New language key `MOD_YSCBSUBS_EXPIREDLIST_EXPORT_CSV` added.
+
+### Client-side pagination: 2026-02-09
+
+Added a `results_per_page` number field (default 50, 0 = show all) to the `basic` fieldset. The template reads this param and adds inline JS that collects all `<tr>` rows across year-grouped tables, shows/hides them per page, hides empty year tables, and renders Bootstrap 5 pagination controls with ellipsis. CSV export remains unaffected (uses the full JSON data block). New language keys `MOD_YSCBSUBS_EXPIREDLIST_FIELD_PERPAGE_LABEL` and `MOD_YSCBSUBS_EXPIREDLIST_FIELD_PERPAGE_DESC` added.
 
 ## Context and Orientation
 
@@ -137,6 +184,8 @@ The manifest file (`mod_yscbsubs_expiredlist.xml`) defines metadata, the namespa
     WHERE published = 1 AND item_type = 'usersubscription'
     ORDER BY ordering ASC, alias ASC
 
+The `basic` fieldset also contains `results_per_page`, a number field (default 50, min 0, step 1) that controls how many rows appear per page. When set to 0, all rows are shown without pagination.
+
 The `advanced` fieldset provides two standard Joomla module options: `layout` (a `modulelayout` field that lets administrators select an alternative template override) and `moduleclass_sfx` (a textarea for a CSS class suffix appended to the module's wrapper element).
 
 ### Milestone 2: Implement Service Provider
@@ -164,16 +213,16 @@ In `src/Helper/ExpiredlistHelper.php`, `ExpiredlistHelper` implements `DatabaseA
     INNER JOIN #__users AS u ON s.user_id = u.id
     LEFT JOIN #__comprofiler AS cb ON s.user_id = cb.id
     WHERE s.plan_id = :planId
-      AND (s.status IN ('X')
+      AND (s.status = 'X'
       OR (s.status = 'A' AND s.expiry_date < NOW())
       )
     ORDER BY s.expiry_date DESC, u.name ASC
 
-The helper builds a `displayName` as "Lastname, Firstname" when available, otherwise uses `u.name`, and groups records by `expiry_year` in descending order.
+The helper builds a `displayName` as "Lastname, Firstname" when available, otherwise uses `u.name`, deduplicates by user ID (keeping the latest expiry since results are ordered by `expiry_date DESC`), and groups records by `expiry_year` in descending order.
 
 ### Milestone 5: Create Template Files
 
-In `tmpl/default.php`, render an alert if no plan is selected or if the list is empty. Otherwise, loop through the grouped list by year and render a table with columns for Name, Email, Mobile, and Expired. Use `HTMLHelper::_('date', ...)` for the expiry date and `htmlspecialchars()` for all user output.
+In `tmpl/default.php`, render an alert if no plan is selected or if the list is empty. Otherwise, display a "Download CSV" button backed by a JSON data block and inline JS (using the Blob API to generate the download), then loop through the grouped list by year and render a table with a `<caption>` showing the year and user count (e.g. "2025 (14)") and columns for Name, Email, Mobile, and Expired. Use `HTMLHelper::_('date', ...)` for the expiry date and `htmlspecialchars()` for all user output. Element IDs incorporate `$module->id` for multi-instance safety. Below the tables, a pagination `<nav>` container is rendered, and inline JS implements client-side pagination: rows are collected across all year tables, shown/hidden per page, year tables with no visible rows are hidden, and Bootstrap 5 pagination controls with ellipsis are generated.
 
 ### Milestone 6: Add Language Files
 
@@ -243,7 +292,7 @@ The module is read-only against the database and has no migrations. Re-running p
     $query->where($db->quoteName('s.plan_id') . ' = :planId')
         ->where(
             '('
-            . $db->quoteName('s.status') . ' IN ("X")'
+            . $db->quoteName('s.status') . ' = ' . $db->quote('X')
             . ' OR ('
             . $db->quoteName('s.status') . ' = ' . $db->quote('A')
             . ' AND ' . $db->quoteName('s.expiry_date') . ' < NOW()'
@@ -275,3 +324,9 @@ For a chronological history of changes to this plan and project documentation, s
 Plan update note: 2026-01-29 - Updated this plan to match the current repository layout and the implemented SQL, template behavior, and packaging details so the documentation reflects the actual module.
 
 Plan update note: 2026-02-09 - Fixed Joomla compatibility range to 4.4+/5.x. Fixed file tree. Added `advanced` fieldset fields, missing DI imports. Extracted changelog. Updated README.
+
+Plan update note: 2026-02-09 - Code fixes: query correctness (`$db->quote('X')`), user deduplication, update XML regex broadened, `<caption>` for accessibility.
+
+Plan update note: 2026-02-09 - Usability: added CSV export button (client-side Blob API, JSON data block, inline JS) and year group count in captions.
+
+Plan update note: 2026-02-09 - Added client-side pagination with `results_per_page` config field (default 50, 0 = show all), Bootstrap 5 pagination controls, and updated milestones/outcomes.

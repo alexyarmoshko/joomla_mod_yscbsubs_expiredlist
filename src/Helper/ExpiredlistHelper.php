@@ -65,7 +65,7 @@ class ExpiredlistHelper implements DatabaseAwareInterface
             ->where($db->quoteName('s.plan_id') . ' = :planId')
             ->where(
                 '('
-                . $db->quoteName('s.status') . ' IN ("X")'
+                . $db->quoteName('s.status') . ' = ' . $db->quote('X')
                 . ' OR ('
                 . $db->quoteName('s.status') . ' = ' . $db->quote('A')
                 . ' AND ' . $db->quoteName('s.expiry_date') . ' < NOW()'
@@ -82,10 +82,19 @@ class ExpiredlistHelper implements DatabaseAwareInterface
             return [];
         }
 
-        // Process users and group by year
+        // Process users and group by year, keeping only the latest expiry per user
         $grouped = [];
+        $seen    = [];
 
         foreach ($users as $user) {
+            $uid = (int) $user->id;
+
+            if (isset($seen[$uid])) {
+                continue;
+            }
+
+            $seen[$uid] = true;
+
             // Build display name: prefer firstname + lastname, fall back to full name
             if (!empty($user->firstname) || !empty($user->lastname)) {
                 $user->displayName = trim(($user->lastname ?? '') . ', ' . ($user->firstname ?? ''), ', ');
