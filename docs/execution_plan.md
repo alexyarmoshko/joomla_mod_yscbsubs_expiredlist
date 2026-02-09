@@ -1,4 +1,4 @@
-# mod_yscbsubs_expiredlist - Members With Expired Subscription Module
+# Members With Expired Subscription (mod_yscbsubs_expiredlist)
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,7 +6,7 @@ This document must be maintained in accordance with `.agent/PLANS.md`.
 
 ## Purpose / Big Picture
 
-This Joomla 5.x module displays a list of Community Builder users whose CB Paid Subscriptions for a selected plan have lapsed. A subscription is considered lapsed when its status is `X` (expired) or when it is `A` (active) but the `expiry_date` is in the past. Administrators can place the module on any site position; it renders a table grouped by expiration year (newest first) with name, email, mobile, and expiry date. If no plan is selected or no results match, the module displays a clear alert message instead of an empty table.
+This Joomla 4.4+/5.x module displays a list of Community Builder users whose CB Paid Subscriptions for a selected plan have lapsed. A subscription is considered lapsed when its status is `X` (expired) or when it is `A` (active) but the `expiry_date` is in the past. Administrators can place the module on any site position; it renders a table grouped by expiration year (newest first) with name, email, mobile, and expiry date. If no plan is selected or no results match, the module displays a clear alert message instead of an empty table.
 
 ## Progress
 
@@ -18,6 +18,7 @@ This Joomla 5.x module displays a list of Community Builder users whose CB Paid 
 - [x] (2026-01-20) Milestone 6: Add language files.
 - [x] (2026-01-20) Milestone 7: Integration testing and validation.
 - [x] (2026-01-29) Updated plan and README to reflect the current repository layout and implementation details.
+- [x] (2026-02-09) Documentation review: fixed inconsistencies, extracted changelog to `docs/execution_changelog.md`, updated README.
 
 ## Surprises & Discoveries
 
@@ -28,7 +29,7 @@ This Joomla 5.x module displays a list of Community Builder users whose CB Paid 
 
 ## Decision Log
 
-- Decision: Use the Joomla 5.x module architecture with `services/provider.php`, `src/Dispatcher/Dispatcher.php`, and `src/Helper/ExpiredlistHelper.php`.
+- Decision: Use the Joomla 4.4+/5.x module architecture with `services/provider.php`, `src/Dispatcher/Dispatcher.php`, and `src/Helper/ExpiredlistHelper.php`.
   Rationale: Matches Joomla core module conventions and enables DI for helpers.
   Date/Author: 2026-01-20
 
@@ -52,15 +53,27 @@ This Joomla 5.x module displays a list of Community Builder users whose CB Paid 
   Rationale: The earlier plan referenced a different root path and outdated status logic.
   Date/Author: 2026-01-29
 
+- Decision: Correct Joomla compatibility from "5.x" to "4.4+/5.x" and document the `advanced` fieldset fields (`layout`, `moduleclass_sfx`).
+  Rationale: The update XML `targetplatform` regex matches Joomla 4.4 and 5.0-5.9. The manifest defines an `advanced` fieldset with layout override and module class suffix that was not reflected in the plan or README.
+  Date/Author: 2026-02-09
+
+- Decision: Extract changelog into a separate `docs/execution_changelog.md` document.
+  Rationale: Keeps the execution plan focused on architecture and implementation while preserving the history of changes in a dedicated file.
+  Date/Author: 2026-02-09
+
 ## Outcomes & Retrospective
 
-**Completed: 2026-01-20**
+### Completed: 2026-01-20
 
-The module implementation is complete and follows Joomla 5.x conventions with DI, helper-based data retrieval, and a template that escapes output. The manifest and language files fully support configuration, and the update server file is included for distribution.
+The module implementation is complete and follows Joomla 4.4+/5.x conventions with DI, helper-based data retrieval, and a template that escapes output. The manifest and language files fully support configuration, and the update server file is included for distribution.
 
-**Documentation update: 2026-01-29**
+### Documentation update: 2026-01-29
 
 The plan and README now reflect the repository root structure, the actual SQL filter logic, the plan selector label formatting, and the alert behavior in the template.
+
+### Documentation review: 2026-02-09
+
+Corrected Joomla compatibility range to 4.4+/5.x (matching the update XML `targetplatform`). Fixed the Milestone 1 file tree. Added the `advanced` fieldset fields to the plan. Added missing DI container imports to the Interfaces section. Extracted the changelog to `docs/execution_changelog.md`. Updated `README.md` with file structure, all configuration options, and auto-update information.
 
 ## Context and Orientation
 
@@ -75,7 +88,7 @@ The module namespace is `Joomla\Module\YSCBSubsExpiredList\Site`. The dispatcher
 3. `#__comprofiler` (CB profiles): `id`, `firstname`, `lastname`, `cb_mobile`.
 4. `#__users` (Joomla users): `id`, `name`, `email`.
 
-## Joomla Module Architecture (Joomla 5.x)
+## Joomla Module Architecture (Joomla 4.4+/5.x)
 
 Modern Joomla modules use dependency injection via a service provider and prepare data through a dispatcher:
 
@@ -95,8 +108,11 @@ The module root contains:
 
     mod_yscbsubs_expiredlist.xml
     mod_yscbsubs_expiredlist.update.xml
+    Makefile
+    LICENSE
+    .gitignore
     services/
-    └── provider.php/
+    └── provider.php
     src/
     ├── Dispatcher/
     │   └── Dispatcher.php
@@ -109,15 +125,19 @@ The module root contains:
         ├── mod_yscbsubs_expiredlist.ini
         └── mod_yscbsubs_expiredlist.sys.ini
     installation/
+    docs/
+    ├── execution_plan.md
+    └── execution_changelog.md
 
-
-The manifest file (`mod_yscbsubs_expiredlist.xml`) defines metadata, the namespace, file listings, language files, and the required plan selector field. The `subs_plan_id` field is a required SQL single-select showing published `usersubscription` plans with a label built from `name` and a rounded `rate`:
+The manifest file (`mod_yscbsubs_expiredlist.xml`) defines metadata, the namespace, file listings, language files, and configuration fields split across two fieldsets. The `basic` fieldset contains the `subs_plan_id` field, a required SQL single-select showing published `usersubscription` plans with a label built from `name` and a rounded `rate`:
 
     SELECT id AS value,
            CONCAT(name, ' (', round(rate), ')') AS text
     FROM #__cbsubs_plans
     WHERE published = 1 AND item_type = 'usersubscription'
     ORDER BY ordering ASC, alias ASC
+
+The `advanced` fieldset provides two standard Joomla module options: `layout` (a `modulelayout` field that lets administrators select an alternative template override) and `moduleclass_sfx` (a textarea for a CSS class suffix appended to the module's wrapper element).
 
 ### Milestone 2: Implement Service Provider
 
@@ -246,6 +266,12 @@ The module uses Joomla core classes:
     use Joomla\Database\DatabaseAwareInterface;
     use Joomla\Database\DatabaseAwareTrait;
     use Joomla\Database\ParameterType;
+    use Joomla\DI\Container;
+    use Joomla\DI\ServiceProviderInterface;
     use Joomla\Registry\Registry;
 
+For a chronological history of changes to this plan and project documentation, see `docs/execution_changelog.md`.
+
 Plan update note: 2026-01-29 - Updated this plan to match the current repository layout and the implemented SQL, template behavior, and packaging details so the documentation reflects the actual module.
+
+Plan update note: 2026-02-09 - Fixed Joomla compatibility range to 4.4+/5.x. Fixed file tree. Added `advanced` fieldset fields, missing DI imports. Extracted changelog. Updated README.
